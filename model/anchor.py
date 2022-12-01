@@ -13,7 +13,7 @@ class AnchorBox:
         self._scales = [2 ** x for x in scales]
         self._num_anchors = len(self._aspect_ratios) * len(self._scales)
         self._areas = [size**2 for size in sizes]
-        self._strides = [2 ** i for i in range(3, 8)]
+        self._strides = [2 ** i for i in range(3,8)]
         self._anchor_dims = self._compute_dims()
 
     def _compute_dims(self):
@@ -41,13 +41,13 @@ class AnchorBox:
 
         centers = tf.meshgrid(rx, ry)
         centers = tf.stack(centers, axis =-1)
-        centers = centers * self._strides[level]
+        centers = centers * self._strides[level-3]
         
         centers = tf.expand_dims(centers, axis = -2)
         centers = tf.tile(centers, [1, 1, self._num_anchors, 1])
 
         dims = tf.tile(
-            self._anchor_dims[level], [centers.shape[0], centers.shape[1], 1, 1]
+            self._anchor_dims[level-3], [centers.shape[0], centers.shape[1], 1, 1]
         )
         anchors = tf.concat([centers, dims], axis =-1)
 
@@ -65,7 +65,7 @@ class AnchorBox:
                 tf.math.ceil(image_width / 2 ** i),
                 i
             )
-            for i in range(3)
+            for i in range(3,8)
         ]
 
         return tf.concat(anchors, axis=0)
