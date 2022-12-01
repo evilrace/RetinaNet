@@ -56,4 +56,16 @@ class AnchorBox:
         )
 
     def get_anchors(self, image_height, image_width):
+        '''
+        generarte anchor boxes for all feature maps
+        '''
+        anchors = [
+            self._get_anchors(
+                tf.math.ceil(image_height / 2 ** i),
+                tf.math.ceil(image_width / 2 ** i),
+                i
+            )
+            for i in range(3)
+        ]
 
+        return tf.concat(anchors, axis=0)
