@@ -29,7 +29,7 @@ def random_flip_horizontal(image, boxes):
     boxes : (num_boxes, 4), (left, top, right, bottom)
     '''
     if tf.random.uniform(()) > 0.5:
-        image = tf.image.random_flip_left_right(image)
+        image = tf.image.flip_left_right(image)
         boxes = tf.stack(
             [1 - boxes[:,2], boxes[:, 1], 1 - boxes[:,0], boxes[:,3]], axis=-1
         )
@@ -109,9 +109,12 @@ def decode_label(label_file_path):
     return label_dict_list, classes
 
 def prepare_data(img_path, label_path):
+    '''
+    prepare raw image and label from data path
+    '''
     img_file_name = pathlib.PurePath(img_path).stem
     label_file_name = pathlib.PurePath(label_path).stem
-    print(img_file_name, label_file_name)
+
     if img_file_name != label_file_name:
         raise NameError(f'The label file and image file name is unmatched.{img_file_name},{label_file_name}')
 
@@ -129,30 +132,39 @@ def prepare_data(img_path, label_path):
     bboxes = bboxes / img_padded_shape
     img, bboxes = random_flip_horizontal(img, bboxes)
     for label, box in zip(labels, bboxes):
-        label['bbox'] = list((box * img_padded_shape[0,]).numpy()) 
+        label['bbox'] = list((box * img_padded_shape[0,]).numpy())
     return img, labels
 
-def visualize_detections(img, labels, figsize= (10,10), linewidth = 1, color=[0,0,1]):
+def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), linewidth = 1, color=[0,0,1]):
     '''
     visualize detection results on img
     '''
     img = np.array(img, dtype=np.uint8)
+    plt.figure(figsize = figsize)
     plt.axis('off')
     plt.imshow(img)
     ax = plt.gca()
     for label in labels:
-        class_type = label['class_type']
-        bbox = label['bbox']
-        left, top, right, bottom = bbox
-        w, h = right - left, bottom - top
-        patch = plt.Rectangle(
-            [left, top], w, h, fill = False, edgecolor=color, linewidth = linewidth
-        )
-        ax.add_patch(patch)
-        ax.text(
-            left, top, class_type, bbox={'facecolor':color, 'alpha':0.4},
-            clip_box = ax.clipbox,
-            clip_on=True
-        )
+        if is_anchors == False:
+            class_type = label['class_type']
+            bbox = label['bbox']
+            left, top, right, bottom = bbox
+            w, h = right - left, bottom - top
+            patch = plt.Rectangle(
+                [left, top], w, h, fill = False, edgecolor=color, linewidth = linewidth
+            )
+            ax.add_patch(patch)
+            ax.text(
+                left, top, class_type, bbox={'facecolor':color, 'alpha':0.4},
+                clip_box = ax.clipbox,
+                clip_on=True
+            )
+        else:
+            left, top, right, bottom = label
+            w, h = right - left, bottom - top
+            patch = plt.Rectangle(
+                [left, top], w, h, fill = False, edgecolor=color, linewidth = linewidth
+            )
+            ax.add_patch(patch)
     plt.show()
     return ax
