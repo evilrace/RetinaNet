@@ -119,7 +119,7 @@ def prepare_data(img_path, label_path):
         raise NameError(f'The label file and image file name is unmatched.{img_file_name},{label_file_name}')
 
     img = tf.image.decode_image(tf.io.read_file(img_path))
-    labels, _ = decode_label(label_path)
+    labels, classes = decode_label(label_path)
     bboxes = np.array([label['bbox'] for label in labels])
     
     img, img_shape, ratio = resize_and_pad_image(img)
@@ -133,7 +133,7 @@ def prepare_data(img_path, label_path):
     img, bboxes = random_flip_horizontal(img, bboxes)
     for label, box in zip(labels, bboxes):
         label['bbox'] = list((box * img_padded_shape[0,]).numpy())
-    return img, labels
+    return img, labels, classes
 
 def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), linewidth = 1, color=[0,0,1]):
     '''
