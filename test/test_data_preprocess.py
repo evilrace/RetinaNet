@@ -16,7 +16,6 @@ class TestPrepareData(unittest.TestCase):
             self.fail(str(e))
 
 class TestBoxConvert(unittest.TestCase):
-
     def test_convert_xywh(self):
         box = tf.convert_to_tensor(
             [[100, 100, 200, 200],

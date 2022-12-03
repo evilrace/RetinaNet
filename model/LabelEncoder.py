@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .anchor import AnchorBox
+from model.Anchor import AnchorBox
 from utils.data_preprocess import *
 def compute_iou(boxes1, boxes2):
     '''

@@ -38,7 +38,6 @@ def random_flip_horizontal(image, boxes):
 def resize_and_pad_image(
     image, min_side = 800, max_side = 1333, jitter = [640, 1024], stride = 128):
     image_shape = tf.cast(tf.shape(image), tf.float32)[:2]
-
     if jitter is not None:
         min_side = tf.random.uniform((), jitter[0], jitter[1], dtype=tf.float32)
 
@@ -93,7 +92,7 @@ def decode_label(label_file_path):
     }
     for raw_label in raw_label_lists:
         label = raw_label.split()
-        class_type = label[0]
+        class_type = classes[label[0]]
         truncated = float(label[1])
         occluded = float(label[2])
         alpha = float(label[3])
@@ -104,36 +103,75 @@ def decode_label(label_file_path):
         label_dict = {'class_type': class_type, 'truncated':truncated, 'occluded':occluded, 'alpha':alpha, 'bbox':bbox, 'dimensions':dimensions, 'location': location,
         'rotation_y':rotation_y}
         label_dict_list.append(label_dict)
-
-
     return label_dict_list, classes
 
-def prepare_data(img_path, label_path):
+# def prepare_data(img_path, label_path):
+#     '''
+#     prepare raw image and label from data path
+#     '''
+#     img_file_name = pathlib.PurePath(img_path).stem
+#     label_file_name = pathlib.PurePath(label_path).stem
+
+#     if img_file_name != label_file_name:
+#         raise NameError(f'The label file and image file name is unmatched.{img_file_name},{label_file_name}')
+
+#     img = tf.image.decode_image(tf.io.read_file(img_path))
+#     labels, classes = decode_label(label_path)
+#     bboxes = np.array([label['bbox'] for label in labels])
+    
+#     img, img_shape, ratio = resize_and_pad_image(img)
+#     bboxes = bboxes * ratio
+#     img_padded_shape = tf.cast(img.shape, tf.float32)
+#     img_padded_shape = tf.gather(img_padded_shape, [1,0])
+#     img_padded_shape = tf.expand_dims(img_padded_shape,axis=0)
+#     img_padded_shape = tf.tile(img_padded_shape, [1,2])
+    
+#     bboxes = bboxes / img_padded_shape
+#     img, bboxes = random_flip_horizontal(img, bboxes)
+#     for label, box in zip(labels, bboxes):
+#         label['bbox'] = list((box * img_padded_shape[0,]).numpy())
+#     return img, labels, classes
+
+def prepare_data(img, label):
     '''
     prepare raw image and label from data path
     '''
-    img_file_name = pathlib.PurePath(img_path).stem
-    label_file_name = pathlib.PurePath(label_path).stem
-
-    if img_file_name != label_file_name:
-        raise NameError(f'The label file and image file name is unmatched.{img_file_name},{label_file_name}')
-
-    img = tf.image.decode_image(tf.io.read_file(img_path))
-    labels, classes = decode_label(label_path)
-    bboxes = np.array([label['bbox'] for label in labels])
-    
     img, img_shape, ratio = resize_and_pad_image(img)
+    cls = label[:, 4]
+    bboxes = label[:,:4]
     bboxes = bboxes * ratio
-    img_padded_shape = tf.cast(img.shape, tf.float32)
+    img_padded_shape = tf.cast(tf.shape(img), tf.float32)
     img_padded_shape = tf.gather(img_padded_shape, [1,0])
     img_padded_shape = tf.expand_dims(img_padded_shape,axis=0)
     img_padded_shape = tf.tile(img_padded_shape, [1,2])
     
     bboxes = bboxes / img_padded_shape
     img, bboxes = random_flip_horizontal(img, bboxes)
-    for label, box in zip(labels, bboxes):
-        label['bbox'] = list((box * img_padded_shape[0,]).numpy())
-    return img, labels, classes
+
+    label = tf.concat([bboxes,cls[:,None]], axis=-1)
+    return img, label
+
+def decode_train_label(labels : list):
+    '''
+    convert raw label into target data. data data use only bounding box and class label.
+    box type is converted as xywh from corner.
+    '''
+    
+    bbox_true = list()
+    cls_true = list()
+    for label in labels:
+        cls = label['class_type']
+        cls_true.append(cls)
+        bbox = label['bbox']
+        bbox_true.append(bbox)
+    bbox_true = tf.convert_to_tensor(bbox_true)
+    cls_true = tf.convert_to_tensor(cls_true)
+    cls_true = tf.cast(cls_true, tf.float32)
+    cls_true = tf.expand_dims(cls_true, axis=-1)
+    bbox_true = convert_to_xywh(bbox_true)
+    labels = tf.concat([bbox_true,cls_true], axis = -1)
+
+    return labels
 
 def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), linewidth = 1, color=[0,0,1]):
     '''
