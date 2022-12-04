@@ -43,11 +43,12 @@ class AnchorBox:
         centers = tf.stack(centers, axis =-1)
         centers = centers * self._strides[level-3]
         
-        centers = tf.expand_dims(centers, axis = -2)
+        centers = tf.expand_dims(centers, axis =-2)
         centers = tf.tile(centers, [1, 1, self._num_anchors, 1])
 
+        centers_shape = tf.shape(centers)
         dims = tf.tile(
-            self._anchor_dims[level-3], [centers.shape[0], centers.shape[1], 1, 1]
+            self._anchor_dims[level-3], [centers_shape[0], centers_shape[1], 1, 1]
         )
         anchors = tf.concat([centers, dims], axis =-1)
 

@@ -74,11 +74,11 @@ class LabelEncoder:
         matched_gt_cls_ids = tf.gather(cls_ids, matched_gt_idx)
 
         cls_target = tf.where(
-            tf.math.not_equal(positive_mask, True), -1.0, matched_gt_cls_ids
+            tf.math.not_equal(positive_mask, 1.0), -1.0, matched_gt_cls_ids
         )
 
         cls_target = tf.where(
-            tf.math.equal(ignore_mask, True), -2.0, cls_target
+            tf.math.equal(ignore_mask, 1.0), -2.0, cls_target
         )
 
         cls_target = tf.where(

@@ -132,13 +132,11 @@ def decode_label(label_file_path):
 #         label['bbox'] = list((box * img_padded_shape[0,]).numpy())
 #     return img, labels, classes
 
-def prepare_data(img, label):
+def prepare_data(img, bboxes, cls_ids):
     '''
     prepare raw image and label from data path
     '''
     img, img_shape, ratio = resize_and_pad_image(img)
-    cls = label[:, 4]
-    bboxes = label[:,:4]
     bboxes = bboxes * ratio
     img_padded_shape = tf.cast(tf.shape(img), tf.float32)
     img_padded_shape = tf.gather(img_padded_shape, [1,0])
@@ -147,9 +145,8 @@ def prepare_data(img, label):
     
     bboxes = bboxes / img_padded_shape
     img, bboxes = random_flip_horizontal(img, bboxes)
-
-    label = tf.concat([bboxes,cls[:,None]], axis=-1)
-    return img, label
+    bboxes = bboxes * img_padded_shape
+    return img, bboxes, cls_ids
 
 def decode_train_label(labels : list):
     '''
@@ -167,11 +164,42 @@ def decode_train_label(labels : list):
     bbox_true = tf.convert_to_tensor(bbox_true)
     cls_true = tf.convert_to_tensor(cls_true)
     cls_true = tf.cast(cls_true, tf.float32)
-    cls_true = tf.expand_dims(cls_true, axis=-1)
     bbox_true = convert_to_xywh(bbox_true)
-    labels = tf.concat([bbox_true,cls_true], axis = -1)
+    return bbox_true, cls_true
 
-    return labels
+# def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), linewidth = 1, color=[0,0,1]):
+#     '''
+#     visualize detection results on img
+#     '''
+#     img = np.array(img, dtype=np.uint8)
+#     plt.figure(figsize = figsize)
+#     plt.axis('off')
+#     plt.imshow(img)
+#     ax = plt.gca()
+#     for label in labels:
+#         if is_anchors == False:
+#             class_type = label['class_type']
+#             bbox = label['bbox']
+#             left, top, right, bottom = bbox
+#             w, h = right - left, bottom - top
+#             patch = plt.Rectangle(
+#                 [left, top], w, h, fill = False, edgecolor=color, linewidth = linewidth
+#             )
+#             ax.add_patch(patch)
+#             ax.text(
+#                 left, top, class_type, bbox={'facecolor':color, 'alpha':0.4},
+#                 clip_box = ax.clipbox,
+#                 clip_on=True
+#             )
+#         else:
+#             left, top, right, bottom = label
+#             w, h = right - left, bottom - top
+#             patch = plt.Rectangle(
+#                 [left, top], w, h, fill = False, edgecolor=color, linewidth = linewidth
+#             )
+#             ax.add_patch(patch)
+#     plt.show()
+#     return ax
 
 def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), linewidth = 1, color=[0,0,1]):
     '''
@@ -184,8 +212,8 @@ def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), line
     ax = plt.gca()
     for label in labels:
         if is_anchors == False:
-            class_type = label['class_type']
-            bbox = label['bbox']
+            class_type = label[4]
+            bbox = label[:4]
             left, top, right, bottom = bbox
             w, h = right - left, bottom - top
             patch = plt.Rectangle(

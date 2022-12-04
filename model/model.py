@@ -59,15 +59,15 @@ def build_head(output_filters, bias_init):
     return head
 
 class RetinaNet(keras.Model):
-    def __init__(self, num_classes, num_anchors, backbone=None, **kwargs):
+    def __init__(self, num_classes, num_anchors = 9, backbone=None, **kwargs):
         super().__init__(**kwargs)
         self.fpn = FeaturePyramid(backbone)
         self.num_classes = num_classes
         self.num_anchors = num_anchors
 
         pior_probability = tf.constant_initializer(-np.log((1-0.01) / 0.01))
-        self.cls_head = build_head(9 * self.num_classes, pior_probability)
-        self.box_head = build_head(9 * 4, 'zeros')
+        self.cls_head = build_head(self.num_anchors * self.num_classes, pior_probability)
+        self.box_head = build_head(self.num_anchors * 4, 'zeros')
 
     def call(self, image, training= False):
         features = self.fpn(image, training=training)
@@ -80,7 +80,6 @@ class RetinaNet(keras.Model):
             cls_outputs.append(tf.reshape(self.cls_head(feature), [N,-1, self.num_classes]))
         cls_outputs = tf.concat(cls_outputs, axis=1)
         box_outputs = tf.concat(box_outputs, axis=1)
-
         return tf.concat([box_outputs, cls_outputs], axis = -1)
 
 
