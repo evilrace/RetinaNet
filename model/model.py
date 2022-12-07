@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 import numpy as np 
 from model.Anchor import AnchorBox
+from utils import data_preprocess
 
 def get_backbone():
     backbone = keras.applications.ResNet50(
@@ -77,7 +78,7 @@ class RetinaNet(keras.Model):
 
         for feature in features:
             box_outputs.append(tf.reshape(self.box_head(feature), [N, -1, 4]))
-            cls_outputs.append(tf.reshape(self.cls_head(feature), [N,-1, self.num_classes]))
+            cls_outputs.append(tf.reshape(self.cls_head(feature), [N, -1, self.num_classes]))
         cls_outputs = tf.concat(cls_outputs, axis=1)
         box_outputs = tf.concat(box_outputs, axis=1)
         return tf.concat([box_outputs, cls_outputs], axis = -1)
@@ -105,10 +106,11 @@ class DecodePredictions(tf.keras.layers.Layer):
         box_target = tf.concat(
             [
                 (box_predictions[:,:,:2] * anchor_boxes[:, :, 2:] + anchor_boxes[:,:,:2]),
-                tf.math.exp(box_predictions[:,:,2:] / anchor_boxes[:, :, 2:]),
+                tf.math.exp(box_predictions[:,:,2:]) * anchor_boxes[:, :, 2:],
             ],
             axis = -1,
         )
+        box_target = data_preprocess.convert_to_corners(box_target)
         return box_target
 
     def call(self, images, predictions):

@@ -6,7 +6,6 @@ def compute_iou(boxes1, boxes2):
     compute pairwise iou matrix for given two sets of boxes
     box types is xywh with shape [num_boxes, 4]
     '''
-    boxes2 = convert_to_xywh(boxes2)
     boxes1_corners = convert_to_corners(boxes1)
     boxes2_corners = convert_to_corners(boxes2)
     lefts = tf.maximum(boxes1_corners[:,None,0], boxes2_corners[:,0])
@@ -103,5 +102,3 @@ class LabelEncoder:
             labels = labels.write(i, label)
         batch_images = tf.keras.applications.resnet.preprocess_input(batch_images)
         return batch_images, labels.stack()
-
-

@@ -9,7 +9,7 @@ def convert_to_xywh(boxes):
 
     boxes = tf.cast(boxes, tf.float32)
     boxes = tf.stack(
-        [(boxes[:,0] + boxes[:,2]) / 2, (boxes[:,1] + boxes[:,3]) / 2, boxes[:,2] - boxes[:,0], boxes[:,3] - boxes[:,1]], axis = -1
+        [(boxes[...,0] + boxes[...,2]) / 2, (boxes[...,1] + boxes[...,3]) / 2, boxes[...,2] - boxes[...,0], boxes[...,3] - boxes[...,1]], axis = -1
     )
 
     return boxes
@@ -17,7 +17,7 @@ def convert_to_corners(boxes):
     ''' change xywh box type(x, y, width, height) to corner box type(left, top, right, bottom)  for given box with shape [box_nums, 4] '''
     boxes = tf.cast(boxes, tf.float32)
     boxes = tf.stack(
-        [boxes[:,0] - boxes[:,2] / 2, boxes[:,1] - boxes[:,3] / 2, boxes[:,0] + boxes[:,2] / 2, boxes[:,1] + boxes[:,3] / 2,], axis = -1
+        [boxes[...,0] - boxes[...,2] / 2, boxes[...,1] - boxes[...,3] / 2, boxes[...,0] + boxes[...,2] / 2, boxes[...,1] + boxes[...,3] / 2,], axis = -1
     )
 
     return boxes
@@ -137,6 +137,7 @@ def prepare_data(img, bboxes, cls_ids):
     prepare raw image and label from data path
     '''
     img, img_shape, ratio = resize_and_pad_image(img)
+    bboxes = convert_to_corners(bboxes)
     bboxes = bboxes * ratio
     img_padded_shape = tf.cast(tf.shape(img), tf.float32)
     img_padded_shape = tf.gather(img_padded_shape, [1,0])
@@ -146,6 +147,7 @@ def prepare_data(img, bboxes, cls_ids):
     bboxes = bboxes / img_padded_shape
     img, bboxes = random_flip_horizontal(img, bboxes)
     bboxes = bboxes * img_padded_shape
+    bboxes = convert_to_xywh(bboxes)
     return img, bboxes, cls_ids
 
 def decode_train_label(labels : list):
@@ -210,6 +212,9 @@ def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), line
     plt.axis('off')
     plt.imshow(img)
     ax = plt.gca()
+    img = tf.cast(img, tf.uint8)
+    if is_anchors == True:
+        labels = convert_to_corners(labels)
     for label in labels:
         if is_anchors == False:
             class_type = label[4]
@@ -226,7 +231,11 @@ def visualize_detections(img, labels, is_anchors = False, figsize= (16,16), line
                 clip_on=True
             )
         else:
-            left, top, right, bottom = label
+            label = label.numpy()
+            left = label[0] 
+            top = label[1] 
+            right = label[2] 
+            bottom = label[3] 
             w, h = right - left, bottom - top
             patch = plt.Rectangle(
                 [left, top], w, h, fill = False, edgecolor=color, linewidth = linewidth
